@@ -1,2 +1,2 @@
 # fesom_pism
-A plugin for using fesom with pism
+An ESM-Tools plugin for tools for FESOM Icebergs + PISM
