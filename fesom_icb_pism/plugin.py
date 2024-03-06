@@ -69,6 +69,7 @@ def update_icebergs(config):
             basin_file,
             icb_restart_file,
             scaling_factor=scaling_factor,
+            seed=int(str(config["general"]["current_date"].year) + str(config["general"]["current_date"].month)) )
         )
         ib.create_dataframe()
         ib._icb_generator()

@@ -2,20 +2,23 @@ import numpy as np
 import xarray as xr
 import pandas as pd
 import numexpr as ne
-import random
+import numpy.random as random
 import powerlaw
 import sys
 import os
 import math
 from tqdm import tqdm
 import pyfesom2 as pf
-#from icb_helper import *
 import time
 
 class IcebergCalving:
     def __init__(self, ifile, mesh_path, icb_path, basin_file, 
                 latest_restart_file="", abg=[0,0,0],
-                scaling_factor=[1, 1, 1, 1, 1, 1]):
+                scaling_factor=[1, 1, 1, 1, 1, 1],
+                seed=0):
+        # set seed for random number generation
+        random.seed(seed)
+        
         # PISM section
         self.ifile = ifile
         self.icb_path = icb_path
@@ -56,7 +59,6 @@ class IcebergCalving:
         self._read_nod2d_file()
         self._read_elem2d_file()
         if not self.latest_restart_file=="":
-            print("LA DEUBG: Latest_restart_file found. Check for full FESOM cells")
             self._get_full_cells()
         else:
             self.full_elems = []
@@ -640,8 +642,8 @@ class IcebergCalving:
                                 lon2, lat2, tmp = self.nod2d.loc[nod2].values
                                 lon3, lat3, tmp = self.nod2d.loc[nod3].values
 
-                                r1 = random.random()
-                                r2 = random.random()
+                                r1 = random.rand()
+                                r2 = random.rand()
                                 
                                 lower_bound = 0.25
                                 upper_bound = 0.75
