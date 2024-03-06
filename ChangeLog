@@ -1,0 +1,19 @@
+CHANGES
+=======
+
+* fix missing library
+* fix missing library
+* fix plugin access
+* fix entry points
+* add apply\_iceberg\_calving\_to\_namelists developed by @ackerlar in ESM-Tools
+* add more functions developed from @ackerlar into the plugin
+* all that's needed for pip installation
+* no pickle in icberg coupling
+* match name of iceberg input
+* add switch for atmospheric drag on icebergs
+* small fixes for iceberg generation
+* speed up iceberg generation
+* add python scripts for iceberg update
+* Update README.md
+* Update README.md
+* Initial commit

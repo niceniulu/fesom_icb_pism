@@ -3,6 +3,7 @@ import os
 
 from .icb_apply_distribution_functions import IcebergCalving
 
+from esm_runscripts.namelists import Namelist
 
 def prep_icebergs(config):
     if "fesom" in config["general"]["valid_model_names"]:
@@ -116,4 +117,10 @@ def apply_iceberg_calving_to_namelists(config):
             )
             icebergs["ib_num"] = ib_num_old + ib_num_new
             nml["icebergs"] = icebergs
+
+            config["fesom"] = Namelist.nmls_modify(config["fesom"])
+            config["fesom"] = Namelist.nmls_finalize(
+                config["fesom"], config["general"]["verbose"]
+            )
+
     return config
