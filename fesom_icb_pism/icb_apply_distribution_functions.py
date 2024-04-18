@@ -15,7 +15,8 @@ class IcebergCalving:
     def __init__(self, ifile, mesh_path, icb_path, basin_file, 
                 latest_restart_file="", abg=[0,0,0],
                 scaling_factor=[1, 1, 1, 1, 1, 1],
-                seed=0):
+                seed=0, bcavities=False, ibareamax=400,
+                domain="SH"):
         # set seed for random number generation
         random.seed(seed)
         
@@ -26,6 +27,7 @@ class IcebergCalving:
         self.mesh_path = mesh_path
         self.nod2d_file = os.path.join(mesh_path, "nod2d.out")
         self.elem2d_file = os.path.join(mesh_path, "elem2d.out")
+        self.cavity_elvls_file = os.path.join(mesh_path, "cavity_elvls.out")
         self.latest_restart_file = latest_restart_file
         self.abg = abg
         self.name_of_discharge = "tendency_of_ice_amount_due_to_discharge" #"tendency_of_ice_amount_due_to_calving"
@@ -39,7 +41,7 @@ class IcebergCalving:
         self.weights_dist = [0.75, 0.175, 0.05, 0.02, 0.005]
         self.area_mean = [0.01, 0.1, 1, 10, 100]
         self.area_min = 0.01             #[km2]
-        self.area_max = 400           #[km2]
+        self.area_max = ibareamax           #[km2]
         self.min_disch_in_cell = 0.0   #[kg m-2 year-1]
         #self.scaling_factor = np.array([1000, 100, 10, 1, 1, 1])
         self.scaling_factor = np.array(scaling_factor)
@@ -47,6 +49,9 @@ class IcebergCalving:
         self.thick_max = 0.25
         self.depth = self.thick * 7/8
         self.height = self.thick - self.depth
+
+        self.domain    = domain
+        self.bcavities = bcavities
 
         self._read_pism_file()
         self._get_pism_resolution()
@@ -58,15 +63,24 @@ class IcebergCalving:
         self._read_mesh()
         self._read_nod2d_file()
         self._read_elem2d_file()
-        if not self.latest_restart_file=="":
+        
+        if self.bcavities and os.path.isfile(self.cavity_elvls_file):
+            self._read_cavity_elvls_file()
+
+        if not self.latest_restart_file=="" and os.path.exists(self.latest_restart_file):
             self._get_full_cells()
         else:
+            print("* no restart file found, continue anyway...")
             self.full_elems = []
 
     def create_dataframe(self):
         self._get_data()
         self._write_icb_mask()
         self._find_basins()
+
+        if self.bcavities:
+            self._remove_cavities()
+        
         self._find_FESOM_elem()
 
         self.df = pd.DataFrame({
@@ -202,6 +216,10 @@ class IcebergCalving:
     def _read_elem2d_file(self):
         self.elem2d = pd.read_csv(self.elem2d_file, header=0, names=["nod1", "nod2", "nod3"], sep='\s+')
 
+    def _read_cavity_elvls_file(self):
+        tmp = pd.read_csv(self.cavity_elvls_file, names=["cavity"], sep='\s+')
+        self.cavity_flags = tmp[tmp>1].notna()
+
     def _get_full_cells(self):
         df = pd.read_csv(self.latest_restart_file, header=None, delim_whitespace=True)
         df_group  = df[[1,2,18,24]].groupby(18)
@@ -219,6 +237,9 @@ class IcebergCalving:
                 full_elems_tmp.append(felem[0])
         self.full_elems = full_elems_tmp
 
+    def _remove_cavities(self):
+        self.elem2d = self.elem2d[~self.cavity_flags]
+
     def _find_FESOM_elem(self):
         points = []
         indices = []
@@ -230,7 +251,7 @@ class IcebergCalving:
         lat2 = self.nod2d.lat[self.elem2d.nod2]
         lon3 = self.nod2d.lon[self.elem2d.nod3]
         lat3 = self.nod2d.lat[self.elem2d.nod3]
-        
+
         with tqdm(total=len(self.lons), file=sys.stdout, desc='find FESOM elements') as pbar:
             for lon, lat in zip(self.lons, self.lats):
                 tmp, ind = PointTriangle_distance(lon, lat, 
@@ -257,7 +278,7 @@ class IcebergCalving:
         return indices
 
 
-    def _create_icebergs_within_basin(self, df):
+    def _create_icebergs_within_basin(self, df, idx):
     ######################################
     # input:    data frame for one basin: discharge and FESOM cell corners (p1, p2, p3)
     # output:   iceberg volume array
@@ -267,9 +288,26 @@ class IcebergCalving:
         
         # mu and sigma for lognormal distribution after Tournadre et al. (2011)
         mu, sigma = 12.3, 1.55**0.5
+        xmin = 0.01
    
-        # alpha for powerlaw after Tournadre et al. (2015)
-        a, xmin = 1.52, 0.01
+        ############################################################
+        if self.domain.lower() == "sh":
+            # Southern Hemisphere: alpha for powerlaw after Tournadre et al. (2015) 
+            a = 1.52
+        elif self.domain.lower() == "greenland":
+            # Greenland: alpha for powerlaw after Shiggins et al. (2023)
+            if idx == 3:    # SKJI and UI
+                a = 2.02
+            elif idx == 5:  # KNS
+                a = 2.38
+            else:
+                a = 2.2 
+        else:
+            a, xmin = 1.52, 0.01
+        print(" * domain is {}, using alpha={} for basin {}".format(self.domain, a, idx))
+        ############################################################
+
+
         median = 2**(1/(a-1))*xmin
 
         # get values within basin
@@ -573,7 +611,7 @@ class IcebergCalving:
         return df_out
     
     #generate icebergs
-    def _icb_generator(self):
+    def _icb_generator(self, fmode="w"):
         ###############################
         # bisher verwendet!
         mu, sigma = 12.3, 1.55**0.5     #Tournadre et al. 2011
@@ -595,7 +633,7 @@ class IcebergCalving:
                     print("*** BASIN = ", index)
 
                     # create icebergs for basin [m3]
-                    ib_tmp = self._create_icebergs_within_basin(b)
+                    ib_tmp = self._create_icebergs_within_basin(b, idx=index)
                     if isinstance(ib_tmp, int):
                         if ib_tmp == -1:
                             continue            # equivalent to redo
@@ -605,8 +643,9 @@ class IcebergCalving:
 
                     # make list of fesom elements and it's neighbours
                     felems = list(b.elems)
-                    for n in b["neigh."]:
-                        felems = felems + list(n)
+                    if not self.bcavities:
+                        for n in b["neigh."]:
+                            felems = felems + list(n)
                     felems = list(set(felems))
   
                     ##############################################################
@@ -674,13 +713,24 @@ class IcebergCalving:
                     break
 
         if not ib_elems_loc.empty:
-            np.savetxt(os.path.join(self.icb_path, "icb_longitude.dat"), ib_elems_loc.lon.values)
-            np.savetxt(os.path.join(self.icb_path, "icb_latitude.dat"), ib_elems_loc.lat.values)
-            np.savetxt(os.path.join(self.icb_path, "icb_length.dat"), ib_elems_loc.length.values * 1e3)
-            np.savetxt(os.path.join(self.icb_path, "icb_height.dat"), ib_elems_loc.depth.values * 1e3)
-            np.savetxt(os.path.join(self.icb_path, "icb_scaling.dat"), ib_elems_loc.scaling.values)
-            np.savetxt(os.path.join(self.icb_path, "icb_felem.dat"), ib_elems_loc.felem.values)
-
+            with open(os.path.join(self.icb_path, "icb_longitude.dat"), fmode) as f:
+                np.savetxt(f, ib_elems_loc.lon.values)
+                f.close()
+            with open(os.path.join(self.icb_path, "icb_latitude.dat"), fmode) as f:
+                np.savetxt(f, ib_elems_loc.lat.values)
+                f.close()
+            with open(os.path.join(self.icb_path, "icb_length.dat"), fmode) as f:
+                np.savetxt(f, ib_elems_loc.length.values * 1e3)
+                f.close()
+            with open(os.path.join(self.icb_path, "icb_height.dat"), fmode) as f:
+                np.savetxt(f, ib_elems_loc.depth.values * 1e3)
+                f.close()
+            with open(os.path.join(self.icb_path, "icb_scaling.dat"), fmode) as f:
+                np.savetxt(f, ib_elems_loc.scaling.values)
+                f.close()
+            with open(os.path.join(self.icb_path, "icb_felem.dat"), fmode) as f:
+                np.savetxt(f, ib_elems_loc.felem.values)
+                f.close()
 
 
 
