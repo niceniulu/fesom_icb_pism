@@ -75,7 +75,7 @@ def update_icebergs(config):
                         icb_restart_file,
                         scaling_factor=scaling_factor,
                         seed=int(str(config["general"]["current_date"].year) + str(config["general"]["current_date"].month)),
-                        ibareamax=config["fesom"].get("ibareamax", 400)
+                        ibareamax=config["fesom"].get("ibareamax", 400),
                         domain=config["fesom"].get("domain", "sh"),
                     )
                     ib.create_dataframe()
