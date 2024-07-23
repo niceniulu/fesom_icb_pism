@@ -238,7 +238,8 @@ class IcebergCalving:
         self.full_elems = full_elems_tmp
 
     def _remove_cavities(self):
-        self.elem2d = self.elem2d[~self.cavity_flags]
+        #self.elem2d = self.elem2d[~self.cavity_flags]
+        self.elem2d = self.elem2d[~self.cavity_flags.values].reset_index()[["nod1", "nod2", "nod3"]]
 
     def _find_FESOM_elem(self):
         points = []

@@ -62,7 +62,8 @@ def update_icebergs(config):
         icb_restart_file = config["fesom"]["restart_in_sources"].get("icb_restart", "")
         scaling_factor = config["fesom"].get("scaling_factor", [1, 1, 1, 1, 1, 1])
         print(" * use scaling factors ", scaling_factor)
-        
+        bcavities = config["fesom"].get("use_cav", False)
+
         if isinstance(disch_file, list) and isinstance(basin_file, list):
             if len(disch_file) == len(basin_file):
                 fmode = "w"
@@ -77,6 +78,7 @@ def update_icebergs(config):
                         seed=int(str(config["general"]["current_date"].year) + str(config["general"]["current_date"].month)),
                         ibareamax=config["fesom"].get("ibareamax", 400),
                         domain=config["fesom"].get("domain", "sh"),
+                        bcavities=bcavities,
                     )
                     ib.create_dataframe()
                     ib._icb_generator(fmode=fmode)
@@ -94,6 +96,7 @@ def update_icebergs(config):
                 scaling_factor=scaling_factor,
                 seed=int(str(config["general"]["current_date"].year) + str(config["general"]["current_date"].month)), 
                 ibareamax=config["fesom"].get("ibareamax", 400),
+                bcavities=bcavities,
             )
             ib.create_dataframe()
             ib._icb_generator(fmode="w")
