@@ -19,7 +19,8 @@ class IcebergCalving:
                 domain="SH"):
         # set seed for random number generation
         random.seed(seed)
-        
+       
+        print(" * seed = ", seed)
         # PISM section
         self.ifile = ifile
         self.icb_path = icb_path
@@ -68,6 +69,7 @@ class IcebergCalving:
             self._read_cavity_elvls_file()
 
         if not self.latest_restart_file=="" and os.path.exists(self.latest_restart_file):
+            print(" * restart file ", self.latest_restart_file)
             self._get_full_cells()
         else:
             print("* no restart file found, continue anyway...")
@@ -226,7 +228,7 @@ class IcebergCalving:
         full_elems_tmp = []
 
         for felem in df_group:
-            if felem[0] == 0.0:
+            if ((int(felem[0])==0) or ((int(felem[0])-1>len(self.mesh.voltri)))):
                 continue
             ai = felem[1][1] * felem[1][2] * felem[1][24]
             af = self.mesh.voltri[int(felem[0])-1]
@@ -234,7 +236,7 @@ class IcebergCalving:
                 print("*** FESOM element is full: ", felem[0])
                 print(" element area = ", af)
                 print(" iceberg area = ", ai)
-                full_elems_tmp.append(felem[0])
+                full_elems_tmp.append(int(felem[0])-1)
         self.full_elems = full_elems_tmp
 
     def _remove_cavities(self):
@@ -289,7 +291,7 @@ class IcebergCalving:
         
         # mu and sigma for lognormal distribution after Tournadre et al. (2011)
         mu, sigma = 12.3, 1.55**0.5
-        xmin = 0.01
+        xmin = self.area_min
    
         ############################################################
         if self.domain.lower() == "sh":
@@ -664,7 +666,7 @@ class IcebergCalving:
                         if coastal == 1:
                             elems_to_drop.append(felem)
 
-                    print(" * drop these elements: ", elems_to_drop) 
+                    print(" * drop these element indices: ", elems_to_drop) 
                     new_felems = [elem for elem in felems if elem not in elems_to_drop]
                     felems = new_felems
                     ##############################################################

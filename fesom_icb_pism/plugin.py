@@ -59,15 +59,16 @@ def update_icebergs(config):
             "mesh_dir"
         ]  # ["namelist_changes"]["namelist.config"]["paths"]["meshpath"]
         basin_file = config["fesom"].get("basin_file", "")
-        icb_restart_file = config["fesom"]["restart_in_sources"].get("icb_restart", "")
+        icb_restart_file = config["fesom"]["restart_in_sources"].get("icb_restart_ISM", "")
         scaling_factor = config["fesom"].get("scaling_factor", [1, 1, 1, 1, 1, 1])
         print(" * use scaling factors ", scaling_factor)
         bcavities = config["fesom"].get("use_cav", False)
 
         if isinstance(disch_file, list) and isinstance(basin_file, list):
             if len(disch_file) == len(basin_file):
+                domain = config["fesom"].get("domain", "sh")
                 fmode = "w"
-                for dfile,bfile in zip(disch_file, basin_file):
+                for dfile,bfile,dom in zip(disch_file, basin_file, domain):
                     ib = IcebergCalving(
                         dfile,
                         mesh_dir,
@@ -77,7 +78,7 @@ def update_icebergs(config):
                         scaling_factor=scaling_factor,
                         seed=int(str(config["general"]["current_date"].year) + str(config["general"]["current_date"].month)),
                         ibareamax=config["fesom"].get("ibareamax", 400),
-                        domain=config["fesom"].get("domain", "sh"),
+                        domain=dom, #config["fesom"].get("domain", "sh"),
                         bcavities=bcavities,
                     )
                     ib.create_dataframe()
