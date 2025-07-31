@@ -13,7 +13,7 @@ import time
 
 class IcebergCalving:
     def __init__(self, ifile, mesh_path, icb_path, basin_file, 
-                latest_restart_file="", abg=[0,0,0],
+                latest_restart_file="", abg=[50,15,-90],
                 scaling_factor=[1, 1, 1, 1, 1, 1],
                 seed=0, bcavities=False, ibareamax=400,
                 domain="SH"):
@@ -21,6 +21,7 @@ class IcebergCalving:
         random.seed(seed)
        
         print(" * seed = ", seed)
+        print(" * cavity = ", str(bcavities))
         # PISM section
         self.ifile = ifile
         self.icb_path = icb_path
@@ -240,8 +241,11 @@ class IcebergCalving:
         self.full_elems = full_elems_tmp
 
     def _remove_cavities(self):
+        print(" * remove cavity elements")
         #self.elem2d = self.elem2d[~self.cavity_flags]
-        self.elem2d = self.elem2d[~self.cavity_flags.values].reset_index()[["nod1", "nod2", "nod3"]]
+        #self.elem2d = self.elem2d[~self.cavity_flags.values].reset_index()[["nod1", "nod2", "nod3"]]
+        self.elem2d = self.elem2d[~self.cavity_flags.values][["nod1", "nod2", "nod3"]]
+        print(" * list of good elements: ", self.elem2d.index.values[:])
 
     def _find_FESOM_elem(self):
         points = []
@@ -263,7 +267,7 @@ class IcebergCalving:
                                                 np.array(lon3), np.array(lat3))
                 
                 points.append(tmp[:3])
-                indices.append(ind)
+                indices.append(self.elem2d.index[ind])
                 pbar.update(1)
         
         self.points1D = points
@@ -273,9 +277,9 @@ class IcebergCalving:
         points = []
         indices = []
 
-        tmp = self.elem2d.loc[((self.elem2d["nod1"].isin(self.elem2d.values[ind])) & (self.elem2d["nod2"].isin(self.elem2d.values[ind]))) | \
-                        ((self.elem2d["nod1"].isin(self.elem2d.values[ind])) & (self.elem2d["nod3"].isin(self.elem2d.values[ind]))) | \
-                        ((self.elem2d["nod2"].isin(self.elem2d.values[ind])) & (self.elem2d["nod3"].isin(self.elem2d.values[ind])))]
+        tmp = self.elem2d.loc[((self.elem2d["nod1"].isin(self.elem2d.loc[ind].values)) & (self.elem2d["nod2"].isin(self.elem2d.loc[ind].values))) | \
+                        ((self.elem2d["nod1"].isin(self.elem2d.loc[ind].values)) & (self.elem2d["nod3"].isin(self.elem2d.loc[ind].values))) | \
+                        ((self.elem2d["nod2"].isin(self.elem2d.loc[ind].values)) & (self.elem2d["nod3"].isin(self.elem2d.loc[ind].values)))]
    
         indices = list(tmp[tmp.index != ind].index)
         return indices
@@ -419,17 +423,17 @@ class IcebergCalving:
        
         ib_elems_ = ib_elems.where(ib_elems.area >= self.area_min).dropna()
     
-        print("*** Check for validity:")
-        print("***      assumed iceberg thickness [km]:         ", self.thick)
-        print("***      total discharge [km3 year-1]:        ", disch_tot)
-        print("***      summed iceberg volume [km3]:         ", sum(ib_elems.volume))
-        print("***      summed iceberg volume [km3]:         ", sum(ib_elems_.volume))
-        print("***      total iceberg area [km2 year-1]:     ", area_tot)
-        print("***      summed area (of generated ib) [km2]: ", sum(ib_elems.area)) 
-        print("***      summed area (of generated ib) [km2]: ", sum(ib_elems_.area)) 
-        print("***      total number of icebergs:            ", len(ib_elems))
-        print("***      total number of icebergs:            ", len(ib_elems_))
-        print(ib_elems_)
+#        print("*** Check for validity:")
+#        print("***      assumed iceberg thickness [km]:         ", self.thick)
+#        print("***      total discharge [km3 year-1]:        ", disch_tot)
+#        print("***      summed iceberg volume [km3]:         ", sum(ib_elems.volume))
+#        print("***      summed iceberg volume [km3]:         ", sum(ib_elems_.volume))
+#        print("***      total iceberg area [km2 year-1]:     ", area_tot)
+#        print("***      summed area (of generated ib) [km2]: ", sum(ib_elems.area)) 
+#        print("***      summed area (of generated ib) [km2]: ", sum(ib_elems_.area)) 
+#        print("***      total number of icebergs:            ", len(ib_elems))
+#        print("***      total number of icebergs:            ", len(ib_elems_))
+#        print(ib_elems_)
         return ib_elems_
 
 
@@ -539,17 +543,17 @@ class IcebergCalving:
        
         ib_elems_ = ib_elems.where(ib_elems.area >= self.area_min).dropna()
     
-        print("*** Check for validity:")
-        print("***      assumed iceberg thickness [km]:         ", self.thick)
-        print("***      total discharge [km3 year-1]:        ", disch_tot)
-        print("***      summed iceberg volume [km3]:         ", sum(ib_elems.volume))
-        print("***      summed iceberg volume [km3]:         ", sum(ib_elems_.volume))
-        print("***      total iceberg area [km2 year-1]:     ", area_tot)
-        print("***      summed area (of generated ib) [km2]: ", sum(ib_elems.area)) 
-        print("***      summed area (of generated ib) [km2]: ", sum(ib_elems_.area)) 
-        print("***      total number of icebergs:            ", len(ib_elems))
-        print("***      total number of icebergs:            ", len(ib_elems_))
-        print(ib_elems_)
+#        print("*** Check for validity:")
+#        print("***      assumed iceberg thickness [km]:         ", self.thick)
+#        print("***      total discharge [km3 year-1]:        ", disch_tot)
+#        print("***      summed iceberg volume [km3]:         ", sum(ib_elems.volume))
+#        print("***      summed iceberg volume [km3]:         ", sum(ib_elems_.volume))
+#        print("***      total iceberg area [km2 year-1]:     ", area_tot)
+#        print("***      summed area (of generated ib) [km2]: ", sum(ib_elems.area)) 
+#        print("***      summed area (of generated ib) [km2]: ", sum(ib_elems_.area)) 
+#        print("***      total number of icebergs:            ", len(ib_elems))
+#        print("***      total number of icebergs:            ", len(ib_elems_))
+#        print(ib_elems_)
         return ib_elems_
 
     def _scale_icebergs(self, df):
@@ -601,16 +605,16 @@ class IcebergCalving:
                                 "scaling": scaling,
                                 "depth": depth})
         
-        print("*** Check for validity:")
-        print("***      BEFORE SCALING:")
-        print("***      total iceberg area [km2]:   ", df.sum(axis=0).area)
-        print("***      total iceberg volume [km3]: ", df.sum(axis=0).volume)
-        print("***      total amount of icebergs:   ", len(df))
-        print("***      AFTER SCALING:")
-        print("***      total iceberg area [km2]:   ", np.sum(df_out.length * df_out.length * df_out.scaling))
-        print("***      total iceberg volume [km3]: ", np.sum(df_out.length * df_out.length * df_out.scaling * df_out.depth))
-        print("***      total amount of icebergs:   ", np.sum(df_out.scaling))
-        print("***      total am. of sim. icebergs: ", len(df_out))
+#        print("*** Check for validity:")
+#        print("***      BEFORE SCALING:")
+#        print("***      total iceberg area [km2]:   ", df.sum(axis=0).area)
+#        print("***      total iceberg volume [km3]: ", df.sum(axis=0).volume)
+#        print("***      total amount of icebergs:   ", len(df))
+#        print("***      AFTER SCALING:")
+#        print("***      total iceberg area [km2]:   ", np.sum(df_out.length * df_out.length * df_out.scaling))
+#        print("***      total iceberg volume [km3]: ", np.sum(df_out.length * df_out.length * df_out.scaling * df_out.depth))
+#        print("***      total amount of icebergs:   ", np.sum(df_out.scaling))
+#        print("***      total am. of sim. icebergs: ", len(df_out))
         return df_out
     
     #generate icebergs
@@ -656,7 +660,7 @@ class IcebergCalving:
                     elems_to_drop = self.full_elems
                 
                     for felem in felems:
-                        nodes = self.elem2d.iloc[felem].values
+                        nodes = self.elem2d.loc[felem].values
                         coastal = False
                         for node in nodes:
                             lon, lat, tmp = self.nod2d.loc[node]
@@ -666,7 +670,7 @@ class IcebergCalving:
                         if coastal == 1:
                             elems_to_drop.append(felem)
 
-                    print(" * drop these element indices: ", elems_to_drop) 
+                    #print(" * drop these element indices: ", elems_to_drop) 
                     new_felems = [elem for elem in felems if elem not in elems_to_drop]
                     felems = new_felems
                     ##############################################################
@@ -679,7 +683,7 @@ class IcebergCalving:
                             for felem, index in zip(felems, ib_elems.index):
                                 ib_elem = ib_elems.loc[index]
                                 
-                                nod1, nod2, nod3 = self.elem2d.iloc[felem].values
+                                nod1, nod2, nod3 = self.elem2d.loc[felem].values
                                 lon1, lat1, tmp = self.nod2d.loc[nod1].values
                                 lon2, lat2, tmp = self.nod2d.loc[nod2].values
                                 lon3, lat3, tmp = self.nod2d.loc[nod3].values
