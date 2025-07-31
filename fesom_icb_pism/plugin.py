@@ -12,7 +12,8 @@ def prep_icebergs(config):
         ):
             # if not config["general"].get("iterative_coupling", False):
             config = update_icebergs(config)
-            if config["general"].get("run_number", 0) == 1:
+            if ((config["general"].get("run_number", 0) == 1) or (not os.path.exists(config["fesom"]["restart_in_sources"].get("icb_restart_ISM")))):
+                print("* either first year of simulation or icb_restart_ISM is missing")
                 if not os.path.isfile(
                     config["general"]["experiment_couple_dir"]
                     + "/num_non_melted_icb_file"
@@ -48,8 +49,8 @@ def update_icebergs(config):
         and config["fesom"].get("update_icebergs", False)
         and config["general"]["run_number"] > 1
     ):
-        print("* starting update icebergs")
-        icb_script = config["fesom"].get("icb_script", "")
+        print(" * starting update icebergs")
+        
         disch_file = config["fesom"].get("disch_file", "")
         iceberg_dir = config["fesom"].get(
             "iceberg_dir", config["general"]["experiment_couple_dir"]
@@ -58,21 +59,48 @@ def update_icebergs(config):
             "mesh_dir"
         ]  # ["namelist_changes"]["namelist.config"]["paths"]["meshpath"]
         basin_file = config["fesom"].get("basin_file", "")
-        icb_restart_file = config["fesom"]["restart_in_sources"].get("icb_restart", "")
+        icb_restart_file = config["fesom"]["restart_in_sources"].get("icb_restart_ISM", "")
         scaling_factor = config["fesom"].get("scaling_factor", [1, 1, 1, 1, 1, 1])
-
         print(" * use scaling factors ", scaling_factor)
-        ib = IcebergCalving(
-            disch_file,
-            mesh_dir,
-            iceberg_dir,
-            basin_file,
-            icb_restart_file,
-            scaling_factor=scaling_factor,
-            seed=int(str(config["general"]["current_date"].year) + str(config["general"]["current_date"].month)) 
-        )
-        ib.create_dataframe()
-        ib._icb_generator()
+        bcavities = config["fesom"].get("use_cav", False)
+
+        if isinstance(disch_file, list) and isinstance(basin_file, list):
+            if len(disch_file) == len(basin_file):
+                domain = config["fesom"].get("domain", "sh")
+                fmode = "w"
+                for dfile,bfile,dom in zip(disch_file, basin_file, domain):
+                    ib = IcebergCalving(
+                        dfile,
+                        mesh_dir,
+                        iceberg_dir,
+                        bfile,
+                        icb_restart_file,
+                        scaling_factor=scaling_factor,
+                        seed=int(str(config["general"]["current_date"].year) + str(config["general"]["current_date"].month)),
+                        ibareamax=config["fesom"].get("ibareamax", 400),
+                        domain=dom, #config["fesom"].get("domain", "sh"),
+                        bcavities=bcavities,
+                    )
+                    ib.create_dataframe()
+                    ib._icb_generator(fmode=fmode)
+                    fmode = "a"
+            else:
+                print(" * disch_file and basin_file need to be of same length! Exit")
+                return -1
+        else:
+            ib = IcebergCalving(
+                disch_file,
+                mesh_dir,
+                iceberg_dir,
+                basin_file,
+                icb_restart_file,
+                scaling_factor=scaling_factor,
+                seed=int(str(config["general"]["current_date"].year) + str(config["general"]["current_date"].month)), 
+                ibareamax=config["fesom"].get("ibareamax", 400),
+                bcavities=bcavities,
+            )
+            ib.create_dataframe()
+            ib._icb_generator(fmode="w")
     return config
 
 
