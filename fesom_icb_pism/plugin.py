@@ -5,6 +5,10 @@ from .icb_apply_distribution_functions import IcebergCalving
 
 from esm_runscripts.namelists import Namelist
 
+import pandas as pd
+import numpy as np
+
+
 def prep_icebergs(config):
     if "fesom" in config["general"]["valid_model_names"]:
         if config["general"].get("with_icb", False) and config["fesom"].get(
@@ -97,6 +101,8 @@ def update_icebergs(config):
                     ib.create_dataframe()
                     ib._icb_generator(fmode=fmode)
                     fmode = "a"
+
+                    check_flux(iceberg_dir) # Lu
             else:
                 print(" * disch_file and basin_file need to be of same length! Exit")
                 return -1
@@ -116,16 +122,7 @@ def update_icebergs(config):
             ib.create_dataframe()
             ib._icb_generator(fmode="w")
 
-        ####### LU -- check flux
-        import pandas as pd
-        import numpy as np
-        length = pd.read_csv("icb_length.dat", header=None)
-        height = pd.read_csv("icb_height.dat", header=None)
-        scaling = pd.read_csv("icb_scaling.dat", header=None)
-        vol = length * length * height * scaling
-        vol_tot = vol.sum()
-        mass_tot = vol_tot * 850. / 1e12  # mass_tot = vol_tot * 910 / 1e12
-        print("Total mass [Gt] = ", mass_tot)
+            check_flux(iceberg_dir) # Lu 
 
     return config
 
@@ -179,3 +176,16 @@ def apply_iceberg_calving_to_namelists(config):
             )
 
     return config
+
+
+####### LU -- check flux
+def check_flux(iceberg_dir):
+    length = pd.read_csv(iceberg_dir+'/'+"icb_length.dat", header=None)
+    height = pd.read_csv(iceberg_dir+'/'+"icb_height.dat", header=None)
+    scaling = pd.read_csv(iceberg_dir+'/'+"icb_scaling.dat", header=None)
+    vol = length * length * height * scaling
+    vol_tot = vol.sum()
+    mass_tot = vol_tot * 850. / 1e12  # mass_tot = vol_tot * 910 / 1e12
+    print("*************** Total mass [Gt] = ", mass_tot)
+
+    return mass_tot
