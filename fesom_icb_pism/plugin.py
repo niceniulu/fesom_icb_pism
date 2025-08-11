@@ -12,6 +12,18 @@ def prep_icebergs(config):
         ):
             # if not config["general"].get("iterative_coupling", False):
             config = update_icebergs(config)
+
+            # ##### --- Lu
+            # flag_iterative = config["general"].get("iterative_coupling", False)
+            #
+            # if  flag_iterative and ( config["general"].get("chunk_number", 0) == 1 ):
+            #     print("Iterative coupling, and chunk_number = 1, skipping icebergs generating...")
+            # elif flag_iterative and ( not config["general"].get("first_run_in_chunk", True ) ):
+            #     print("Iterative coupling, and not first run in chunk, skipping icebergs generating...")
+            # else:
+            #     config = update_icebergs(config)
+
+
             if ((config["general"].get("run_number", 0) == 1) or (not os.path.exists(config["fesom"]["restart_in_sources"].get("icb_restart_ISM")))):
                 print("* either first year of simulation or icb_restart_ISM is missing")
                 if not os.path.isfile(
@@ -50,7 +62,7 @@ def update_icebergs(config):
         and config["general"]["run_number"] > 1
     ):
         print(" * starting update icebergs")
-        
+
         disch_file = config["fesom"].get("disch_file", "")
         iceberg_dir = config["fesom"].get(
             "iceberg_dir", config["general"]["experiment_couple_dir"]
@@ -80,6 +92,7 @@ def update_icebergs(config):
                         ibareamax=config["fesom"].get("ibareamax", 400),
                         domain=dom, #config["fesom"].get("domain", "sh"),
                         bcavities=bcavities,
+                        abg=[0,0,0],
                     )
                     ib.create_dataframe()
                     ib._icb_generator(fmode=fmode)
@@ -95,12 +108,25 @@ def update_icebergs(config):
                 basin_file,
                 icb_restart_file,
                 scaling_factor=scaling_factor,
-                seed=int(str(config["general"]["current_date"].year) + str(config["general"]["current_date"].month)), 
+                seed=int(str(config["general"]["current_date"].year) + str(config["general"]["current_date"].month)),
                 ibareamax=config["fesom"].get("ibareamax", 400),
                 bcavities=bcavities,
+                abg=[0,0,0],
             )
             ib.create_dataframe()
             ib._icb_generator(fmode="w")
+
+        ####### LU -- check flux
+        import pandas as pd
+        import numpy as np
+        length = pd.read_csv("icb_length.dat", header=None)
+        height = pd.read_csv("icb_height.dat", header=None)
+        scaling = pd.read_csv("icb_scaling.dat", header=None)
+        vol = length * length * height * scaling
+        vol_tot = vol.sum()
+        mass_tot = vol_tot * 850. / 1e12  # mass_tot = vol_tot * 910 / 1e12
+        print("Total mass [Gt] = ", mass_tot)
+
     return config
 
 
